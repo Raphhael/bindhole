@@ -1,0 +1,39 @@
+acl whiteclients {
+  192.168.0.0/24;
+  192.168.1.0/24;
+  172.16.0.0/12;
+  10.0.0.0/8;
+  localhost;
+};
+
+
+options {
+    forwarders {
+         9.9.9.9;
+         1.1.1.1;
+         1.0.0.1;
+         8.8.8.8;
+         8.8.4.4;
+    };
+    allow-query { whiteclients; };
+    allow-recursion { whiteclients; };
+    allow-query-cache { whiteclients; };
+    auth-nxdomain no;
+    blackhole { };
+    empty-zones-enable yes;
+
+    listen-on { any; };
+
+    dnssec-enable yes;
+    dnssec-validation yes;
+    dnssec-lookaside auto;
+
+    allow-transfer { none; };
+    allow-update { none; };
+    allow-update-forwarding { none; };
+
+    response-policy { zone "rpz-adblock"; };
+    version none;
+    hostname none;
+    server-id none;
+};

@@ -1,0 +1,11 @@
+zone "rpz-adblock" {
+  type master;
+  file "/etc/bind/db.rpz-adblock";
+  allow-query { none; };
+};
+
+zone "lan" {
+  type master;
+  file "/etc/bind/db.lan";
+  allow-query { any; };
+};

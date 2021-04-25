@@ -1,0 +1,11 @@
+$TTL    604800
+@       IN      SOA     lan. admin.lan. (
+                       20210425         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+
+@        IN NS ns.lan.
+gateway  IN A  192.168.1.1
+# ...
