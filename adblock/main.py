@@ -9,16 +9,16 @@ with open("config.yaml") as f:
 sources = config.get('sources') or {}
 hosts = sources.get('by_hosts') or []
 domain_lists = sources.get('by_domains') or []
-
-data = set()
-lock = Lock()
+other = sources.get('others') or []
+whitelist = set(config.get('whitelist', []) or [])
 
 
 def add_host(host):
-    if host and host not in ['0.0.0.0', '127.0.0.1', 'localhost']:
-        host = host.strip(". \t\n").split(' ')[0] + " CNAME ."
-        data.add("*." + host)
-        data.add(host)
+    if host:
+        host = host.strip(". \t\n").split(' ')[0]
+        if host not in whitelist:
+            data.add(host + " CNAME .")
+            # data.add("*." + host)
 
 
 def process_domains(content):
@@ -39,48 +39,53 @@ def process_hosts(content):
 
 
 def download_file(url, ftype):
-    try:
-        print("download", url)
-        resp = requests.get(url)
-        resp.raise_for_status()
-        with lock:
-            if ftype == "hosts":
-                process_hosts(resp.text)
-            elif ftype == "domains":
-                process_domains(resp.text)
-            else:
-                print("wrong ftype :", ftype)
+    for i in range(5):
+        try:
+            print("download", url)
+            resp = requests.get(url)
+            resp.raise_for_status()
+            with lock:
+                if ftype == "hosts":
+                    process_hosts(resp.text)
+                elif ftype == "domains":
+                    process_domains(resp.text)
+                else:
+                    print("wrong ftype :", ftype)
 
-    except requests.RequestException as err:
-        print("URL ERROR : ", err)
+        except requests.RequestException as err:
+            print("URL ERROR : ", err)
 
 
-with ThreadPoolExecutor(4) as executor:
-    for file in set(hosts):
-        executor.submit(download_file, file, "hosts")
-    for file in set(domain_lists):
-        executor.submit(download_file, file, 'domains')
+if __name__ == '__main__':
+    data = set()
+    lock = Lock()
+    list(map(add_host, other))
+    with ThreadPoolExecutor(4) as executor:
+        for file in set(hosts):
+            executor.submit(download_file, file, "hosts")
+        for file in set(domain_lists):
+            executor.submit(download_file, file, 'domains')
 
-header = """
-$TTL 2w
+    header = """
+    $TTL 2w
+    
+    @ IN SOA localhost. root.localhost. (
+      2   ; serial
+      2w  ; refresh
+      2w  ; retry
+      2w  ; expiry
+      2w  ; minimum
+    )
+    
+    @ IN NS localhost.
+    
+    """
 
-@ IN SOA localhost. root.localhost. (
-  2   ; serial
-  2w  ; refresh
-  2w  ; retry
-  2w  ; expiry
-  2w  ; minimum
-)
+    data = sorted(set(data))
 
-@ IN NS localhost.
+    with open(config.get('zone_file', 'zone.txt'), "w") as zone:
+        zone.write(header)
+        zone.write('\n'.join(data))
+        zone.write('\n')
 
-*.numericable.fr CNAME .
-"""
-data = sorted(set(data))
-
-with open(config.get('zone_file', 'zone.txt'), "w") as zone:
-    zone.write(header)
-    zone.write('\n'.join(data))
-    zone.write('\n')
-
-print(len(data), "entries")
+    print(len(data), "entries")
