@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from threading import Lock
 
 import requests
@@ -16,7 +17,7 @@ whitelist = set(config.get('whitelist', []) or [])
 def add_host(host):
     if host:
         host = host.strip(". \t\n").split(' ')[0]
-        if host not in whitelist:
+        if host not in whitelist and not host.startswith('#'):
             data.add(host + " CNAME .")
             # data.add("*." + host)
 
@@ -66,20 +67,20 @@ if __name__ == '__main__':
         for file in set(domain_lists):
             executor.submit(download_file, file, 'domains')
 
-    header = """
-    $TTL 2w
-    
-    @ IN SOA localhost. root.localhost. (
-      2   ; serial
-      2w  ; refresh
-      2w  ; retry
-      2w  ; expiry
-      2w  ; minimum
-    )
-    
-    @ IN NS localhost.
-    
-    """
+    header = f"""
+$TTL 2w
+
+@ IN SOA localhost. root.localhost. (
+    {datetime.now().strftime("%Y%m%d")}   ; serial
+    604800     ; refresh
+    14400      ; retry
+    1209600    ; expiry
+    345600     ; minimum
+)
+
+@ IN NS localhost.
+
+"""
 
     data = sorted(set(data))
 
